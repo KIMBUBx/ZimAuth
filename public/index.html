@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZimAuth — The Ultimate Free & Open Licensing Solution</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen">
+
+  <!-- Top Announcement Bar -->
+  <div class="bg-gradient-to-r from-indigo-900/60 via-purple-900/60 to-indigo-900/60 border-b border-indigo-500/20 py-2 px-4 text-center text-xs sm:text-sm font-medium text-indigo-200">
+    ✨ <span class="text-white font-semibold">ZimAuth Unlocked:</span> All premium & enterprise features are permanently 100% free with unlimited applications & keys.
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="glass-nav sticky top-0 z-50 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+        </div>
+        <span class="text-2xl font-black tracking-tight text-white">Zim<span class="gradient-text">Auth</span></span>
+      </div>
+
+      <div class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+        <a href="#features" class="hover:text-white transition">Features</a>
+        <a href="#sdks" class="hover:text-white transition">SDKs & API</a>
+        <a href="#pricing" class="hover:text-white transition">Free Plan</a>
+        <a href="/dashboard.html" class="hover:text-white transition">Dashboard</a>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <a href="/login.html" class="text-sm font-semibold text-slate-300 hover:text-white transition px-4 py-2">Sign In</a>
+        <a href="/dashboard.html" class="gradient-btn text-sm font-semibold px-5 py-2.5 rounded-xl flex items-center space-x-2">
+          <span>Open Dashboard</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative pt-24 pb-20 px-6 max-w-7xl mx-auto text-center">
+    <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs sm:text-sm font-semibold mb-8 backdrop-blur-md">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span>KeyAuth 1.2 Compatible • No Subscription Fees</span>
+    </div>
+
+    <h1 class="text-5xl sm:text-7xl font-extrabold tracking-tight max-w-5xl mx-auto leading-tight sm:leading-none mb-8">
+      The Ultimate Cloud Licensing & <br class="hidden sm:block">
+      <span class="gradient-text">Authentication System</span>
+    </h1>
+
+    <p class="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto mb-10 font-normal">
+      Protect your software in minutes. HWID locking, license key generation, cloud variables, encrypted file hosting, Discord webhooks, and multi-language client SDKs — completely unlocked and 100% free.
+    </p>
+
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-16">
+      <a href="/login.html" class="w-full sm:w-auto gradient-btn text-base font-bold px-8 py-3.5 rounded-xl shadow-xl flex items-center justify-center space-x-2">
+        <span>Get Started For Free</span>
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+      </a>
+      <a href="#sdks" class="w-full sm:w-auto px-8 py-3.5 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-800/80 text-slate-200 font-semibold transition flex items-center justify-center space-x-2">
+        <span>View SDK Code</span>
+        <i data-lucide="code" class="w-5 h-5"></i>
+      </a>
+    </div>
+
+    <!-- Metrics Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
+      <div class="glass-card p-6 text-center">
+        <div class="text-3xl font-extrabold text-white mb-1">0 ms</div>
+        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Local Latency</div>
+      </div>
+      <div class="glass-card p-6 text-center">
+        <div class="text-3xl font-extrabold text-indigo-400 mb-1">Unlimited</div>
+        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Applications & Keys</div>
+      </div>
+      <div class="glass-card p-6 text-center">
+        <div class="text-3xl font-extrabold text-emerald-400 mb-1">100% Free</div>
+        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Enterprise Unlocked</div>
+      </div>
+      <div class="glass-card p-6 text-center">
+        <div class="text-3xl font-extrabold text-purple-400 mb-1">KeyAuth 1.2</div>
+        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">SDK Protocol Ready</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-20 px-6 max-w-7xl mx-auto">
+    <div class="text-center mb-16">
+      <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">Complete Feature Parity</h2>
+      <p class="text-3xl sm:text-4xl font-extrabold text-white">Everything You Need To Secure Your Software</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- Feature 1 -->
+      <div class="glass-card p-8 hover:border-indigo-500/40 transition">
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-6">
+          <i data-lucide="cpu" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Hardware ID (HWID) Locking</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Automatically lock license keys or user accounts to the user's specific hardware components. Prevents account sharing, key leaking, and piracy. Reset HWIDs with a single click in your dashboard.
+        </p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="glass-card p-8 hover:border-indigo-500/40 transition">
+        <div class="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-6">
+          <i data-lucide="key" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Flexible License Generator</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Generate single or bulk license keys in seconds. Customize masks (e.g. <code>ZIM-XXXXXX-XXXXXX</code>), set durations (1 day, 30 days, or lifetime), set subscription tiers, and attach reseller notes.
+        </p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="glass-card p-8 hover:border-indigo-500/40 transition">
+        <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-6">
+          <i data-lucide="database" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Cloud Variables & Secrets</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Store server-side strings, API keys, decrypted payloads, and config values in the cloud. Variables are transmitted over secure sessions directly to authenticated clients.
+        </p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="glass-card p-8 hover:border-indigo-500/40 transition">
+        <div class="w-12 h-12 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center mb-6">
+          <i data-lucide="file-down" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Protected File Hosting</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Upload game loaders, DLLs, plugins, or config files. Deliver binaries to authenticated client sessions only, verified by SHA256 integrity checks.
+        </p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="glass-card p-8 hover:border-indigo-500/40 transition">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-6">
+          <i data-lucide="webhook" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Discord Webhooks & Logs</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Receive real-time notifications directly in your Discord channels when users log in, redeem keys, or get banned. Search and filter detailed client event logs in real time.
+        </p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="glass-card p-8 hover:border-indigo-500/40 transition">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-6">
+          <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">Drop-in KeyAuth SDK Support</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Already using KeyAuth C++, C#, or Python SDKs in your software? Simply point the API endpoint to your ZimAuth server — 100% protocol compatible without changing your client code!
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SDK Preview Section -->
+  <section id="sdks" class="py-20 px-6 max-w-7xl mx-auto">
+    <div class="glass-card p-8 sm:p-12 border-indigo-500/30">
+      <div class="flex flex-col lg:flex-row items-center gap-12">
+        <div class="lg:w-1/2">
+          <div class="inline-flex items-center space-x-2 text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">
+            <i data-lucide="terminal" class="w-4 h-4"></i>
+            <span>Seamless Integration</span>
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-6">Works with Any Language or KeyAuth Client</h2>
+          <p class="text-slate-400 mb-6 leading-relaxed">
+            Connect your applications using simple HTTP requests or your existing KeyAuth libraries. Initializing takes just a few lines of code.
+          </p>
+          <div class="space-y-3">
+            <div class="flex items-center space-x-3 text-sm text-slate-300">
+              <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+              <span>C++ (KeyAuth C++ SDK compatible)</span>
+            </div>
+            <div class="flex items-center space-x-3 text-sm text-slate-300">
+              <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+              <span>C# / .NET (WinForms, WPF, Console)</span>
+            </div>
+            <div class="flex items-center space-x-3 text-sm text-slate-300">
+              <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+              <span>Python, Go, Node.js, and REST API</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:w-1/2 w-full">
+          <div class="bg-slate-950/80 rounded-xl border border-slate-800 p-5 font-mono text-xs sm:text-sm text-slate-300 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 text-xs text-slate-500">
+              <div class="flex space-x-2">
+                <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
+              </div>
+              <span>Python Client Example</span>
+            </div>
+            <pre class="overflow-x-auto text-indigo-300"><code><span class="text-purple-400">import</span> requests
+
+<span class="text-slate-500"># Point to your ZimAuth server</span>
+BASE_URL = <span class="text-emerald-300">"http://localhost:3000/api/1.2/"</span>
+
+<span class="text-slate-500"># 1. Initialize application</span>
+resp = requests.post(BASE_URL, data={
+    <span class="text-amber-300">"type"</span>: <span class="text-emerald-300">"init"</span>,
+    <span class="text-amber-300">"name"</span>: <span class="text-emerald-300">"MyCheatOrApp"</span>,
+    <span class="text-amber-300">"ownerid"</span>: <span class="text-emerald-300">"YOUR_OWNER_ID"</span>,
+    <span class="text-amber-300">"secret"</span>: <span class="text-emerald-300">"YOUR_APP_SECRET"</span>,
+    <span class="text-amber-300">"version"</span>: <span class="text-emerald-300">"1.0"</span>
+}).json()
+
+sessionid = resp[<span class="text-emerald-300">"sessionid"</span>]
+
+<span class="text-slate-500"># 2. Login with License Key & HWID</span>
+login = requests.post(BASE_URL, data={
+    <span class="text-amber-300">"type"</span>: <span class="text-emerald-300">"license"</span>,
+    <span class="text-amber-300">"key"</span>: <span class="text-emerald-300">"ZIM-XXXX-XXXX"</span>,
+    <span class="text-amber-300">"hwid"</span>: <span class="text-emerald-300">"HWID_12345"</span>,
+    <span class="text-amber-300">"sessionid"</span>: sessionid
+}).json()
+
+<span class="text-purple-400">if</span> login[<span class="text-emerald-300">"success"</span>]:
+    <span class="text-blue-400">print</span>(<span class="text-emerald-300">"Authentication Succeeded! Enjoy."</span>)</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing / Free Unlocked Section -->
+  <section id="pricing" class="py-20 px-6 max-w-7xl mx-auto">
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
+        Zero Paywalls • Unlimited Access
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white">Compare Plans</h2>
+      <p class="text-slate-400 max-w-xl mx-auto mt-2">Normally KeyAuth charges monthly subscriptions for advanced features. ZimAuth unlocks every single feature for free.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <!-- Standard / Competitor -->
+      <div class="glass-card p-8 border-slate-800 opacity-60">
+        <div class="text-lg font-bold text-slate-300 mb-2">Original KeyAuth Plans</div>
+        <div class="text-3xl font-extrabold text-slate-400 mb-6">$19 - $79 <span class="text-sm font-normal text-slate-500">/ month</span></div>
+        <ul class="space-y-4 text-sm text-slate-400">
+          <li class="flex items-center space-x-3">
+            <i data-lucide="x" class="w-4 h-4 text-rose-500"></i>
+            <span>Limited application slots</span>
+          </li>
+          <li class="flex items-center space-x-3">
+            <i data-lucide="x" class="w-4 h-4 text-rose-500"></i>
+            <span>Rate-limited API requests</span>
+          </li>
+          <li class="flex items-center space-x-3">
+            <i data-lucide="x" class="w-4 h-4 text-rose-500"></i>
+            <span>Monthly recurring subscription costs</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ZimAuth Enterprise Free -->
+      <div class="glass-card p-8 border-indigo-500 relative shadow-2xl shadow-indigo-500/20">
+        <div class="absolute -top-3 right-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">
+          Permanently Free
+        </div>
+        <div class="text-lg font-bold text-white mb-2">ZimAuth Enterprise Edition</div>
+        <div class="text-4xl font-black text-white mb-6">$0 <span class="text-sm font-normal text-slate-400">/ lifetime</span></div>
+        <ul class="space-y-4 text-sm text-slate-200 mb-8">
+          <li class="flex items-center space-x-3">
+            <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+            <span><strong>Unlimited</strong> Applications & Key Generation</span>
+          </li>
+          <li class="flex items-center space-x-3">
+            <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+            <span><strong>Unlimited</strong> HWID Locking & Automatic Reset</span>
+          </li>
+          <li class="flex items-center space-x-3">
+            <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+            <span><strong>Unlimited</strong> Cloud Variables & Encrypted Files</span>
+          </li>
+          <li class="flex items-center space-x-3">
+            <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+            <span>Full Discord Webhook Integration</span>
+          </li>
+          <li class="flex items-center space-x-3">
+            <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+            <span>Local Database Storage & Zero Cloud Downtime</span>
+          </li>
+        </ul>
+        <a href="/login.html" class="gradient-btn block text-center py-3 rounded-xl font-bold text-white">
+          Launch Your Free Server
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-12 px-6">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-sm text-slate-500">
+      <div class="flex items-center space-x-2">
+        <i data-lucide="shield-check" class="w-5 h-5 text-indigo-400"></i>
+        <span class="text-slate-300 font-bold">ZimAuth</span>
+        <span>— Self-Hosted KeyAuth Alternative. 100% Free.</span>
+      </div>
+      <div class="flex space-x-6">
+        <a href="/dashboard.html" class="hover:text-slate-300 transition">Dashboard</a>
+        <a href="/login.html" class="hover:text-slate-300 transition">Sign In</a>
+        <a href="#features" class="hover:text-slate-300 transition">Features</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

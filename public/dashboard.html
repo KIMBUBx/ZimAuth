@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZimAuth Dashboard — Cloud Licensing & Authentication</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Top Navbar -->
+  <header class="glass-nav sticky top-0 z-40 px-6 py-3">
+    <div class="flex items-center justify-between">
+      <!-- Left: Logo & App Selector -->
+      <div class="flex items-center space-x-6">
+        <a href="/" class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+            <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+          </div>
+          <span class="text-xl font-black tracking-tight text-white">Zim<span class="gradient-text">Auth</span></span>
+        </a>
+
+        <!-- App Switcher -->
+        <div class="flex items-center space-x-2 bg-slate-900/80 border border-slate-700/80 rounded-xl px-3 py-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-indigo-400"></i>
+          <select id="app-selector" onchange="onSelectApp(this.value)" class="bg-transparent text-sm font-semibold text-slate-200 focus:outline-none cursor-pointer">
+            <option value="">Loading applications...</option>
+          </select>
+          <button onclick="openModal('create-app-modal')" title="Create New App" class="ml-1 p-1 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: User info & logout -->
+      <div class="flex items-center space-x-4">
+        <div class="hidden sm:flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span id="user-plan-badge">Enterprise Lifetime (Free)</span>
+        </div>
+
+        <div class="flex items-center space-x-2 text-sm text-slate-300">
+          <i data-lucide="user-circle" class="w-5 h-5 text-indigo-400"></i>
+          <span id="current-username" class="font-bold">admin</span>
+        </div>
+
+        <button onclick="logout()" class="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition" title="Sign Out">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Body / Sidebar + Content -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 glass-card rounded-none border-t-0 border-l-0 border-b-0 p-4 flex flex-col justify-between hidden md:flex">
+      <div class="space-y-1">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 py-2">Management</div>
+        
+        <button onclick="switchTab('overview')" id="nav-overview" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-indigo-400 bg-indigo-500/10 transition">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Overview</span>
+        </button>
+
+        <button onclick="switchTab('keys')" id="nav-keys" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="key" class="w-4 h-4"></i>
+          <span>Licenses / Keys</span>
+        </button>
+
+        <button onclick="switchTab('users')" id="nav-users" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span>App Users</span>
+        </button>
+
+        <button onclick="switchTab('vars')" id="nav-vars" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="database" class="w-4 h-4"></i>
+          <span>Cloud Variables</span>
+        </button>
+
+        <button onclick="switchTab('files')" id="nav-files" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="file-down" class="w-4 h-4"></i>
+          <span>Protected Files</span>
+        </button>
+
+        <button onclick="switchTab('logs')" id="nav-logs" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="scroll-text" class="w-4 h-4"></i>
+          <span>Event Logs</span>
+        </button>
+
+        <button onclick="switchTab('webhooks')" id="nav-webhooks" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="webhook" class="w-4 h-4"></i>
+          <span>Webhooks</span>
+        </button>
+
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-6 pb-2">Developer</div>
+
+        <button onclick="switchTab('sdks')" id="nav-sdks" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="code-2" class="w-4 h-4"></i>
+          <span>SDK Integration</span>
+        </button>
+
+        <button onclick="switchTab('settings')" id="nav-settings" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span>App Settings</span>
+        </button>
+      </div>
+
+      <!-- App Status Footer -->
+      <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+        <div class="text-slate-400 mb-1">KeyAuth API Status</div>
+        <div class="flex items-center space-x-2 text-emerald-400 font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Endpoint 1.2 Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content Workspace -->
+    <main class="flex-1 overflow-y-auto p-6 md:p-8">
+      
+      <!-- TAB 1: OVERVIEW -->
+      <div id="tab-overview" class="space-y-6">
+        <!-- Banner -->
+        <div class="glass-card p-6 border-indigo-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center space-x-3 mb-1">
+              <h1 id="app-title" class="text-2xl font-black text-white">Select Application</h1>
+              <span id="app-status-badge" class="badge badge-success">Active</span>
+            </div>
+            <p class="text-slate-400 text-sm">KeyAuth 1.2 compatible cloud authentication & license management</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button onclick="openModal('create-key-modal')" class="gradient-btn text-sm font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>Generate Keys</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Total Keys</span>
+              <i data-lucide="key" class="w-4 h-4 text-indigo-400"></i>
+            </div>
+            <div id="metric-total-keys" class="text-2xl font-black text-white">0</div>
+          </div>
+
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Active Keys</span>
+              <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <div id="metric-active-keys" class="text-2xl font-black text-emerald-400">0</div>
+          </div>
+
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Registered Users</span>
+              <i data-lucide="users" class="w-4 h-4 text-cyan-400"></i>
+            </div>
+            <div id="metric-total-users" class="text-2xl font-black text-white">0</div>
+          </div>
+
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Activity Logs</span>
+              <i data-lucide="scroll-text" class="w-4 h-4 text-purple-400"></i>
+            </div>
+            <div id="metric-total-logs" class="text-2xl font-black text-white">0</div>
+          </div>
+        </div>
+
+        <!-- App Credentials Cards (KeyAuth Init Parameters) -->
+        <div class="glass-card p-6 border-slate-800">
+          <h2 class="text-base font-bold text-white mb-4 flex items-center space-x-2">
+            <i data-lucide="key-round" class="w-4 h-4 text-indigo-400"></i>
+            <span>Application Credentials (Use in Client SDK)</span>
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+              <div class="text-xs text-slate-500 uppercase font-semibold mb-1">Application Name</div>
+              <div class="flex items-center justify-between">
+                <code id="cred-name" class="text-sm text-indigo-300 font-bold">---</code>
+                <button onclick="copyToClipboard('cred-name')" class="text-slate-400 hover:text-white"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+              <div class="text-xs text-slate-500 uppercase font-semibold mb-1">Owner ID</div>
+              <div class="flex items-center justify-between">
+                <code id="cred-owner" class="text-sm text-indigo-300 font-bold">---</code>
+                <button onclick="copyToClipboard('cred-owner')" class="text-slate-400 hover:text-white"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+              <div class="text-xs text-slate-500 uppercase font-semibold mb-1">Application Secret</div>
+              <div class="flex items-center justify-between">
+                <code id="cred-secret" class="text-sm text-indigo-300 font-bold truncate max-w-[180px]">---</code>
+                <button onclick="copyToClipboard('cred-secret')" class="text-slate-400 hover:text-white"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: LICENSES / KEYS -->
+      <div id="tab-keys" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black text-white">License Keys</h2>
+            <p class="text-slate-400 text-sm">Create, activate, ban, or reset HWID for client license keys</p>
+          </div>
+          <div class="flex space-x-3">
+            <button onclick="openModal('create-key-modal')" class="gradient-btn text-sm font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Generate Keys</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-card overflow-x-auto p-4">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>License Key</th>
+                <th>Days / Level</th>
+                <th>Status</th>
+                <th>Used By</th>
+                <th>Hardware ID (HWID)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="keys-table-body">
+              <tr>
+                <td colspan="6" class="text-center text-slate-500 py-8">No keys found. Click 'Generate Keys' above.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: APP USERS -->
+      <div id="tab-users" class="hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-black text-white">Application Users</h2>
+          <p class="text-slate-400 text-sm">Users registered through client applications</p>
+        </div>
+
+        <div class="glass-card overflow-x-auto p-4">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>HWID</th>
+                <th>IP Address</th>
+                <th>Status</th>
+                <th>Subscription Expiry</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <tr>
+                <td colspan="6" class="text-center text-slate-500 py-8">No registered users yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 4: CLOUD VARIABLES -->
+      <div id="tab-vars" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-black text-white">Cloud Variables</h2>
+            <p class="text-slate-400 text-sm">Server-side strings & payloads served to client SDKs</p>
+          </div>
+          <button onclick="openModal('create-var-modal')" class="gradient-btn text-sm font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Variable</span>
+          </button>
+        </div>
+
+        <div class="glass-card overflow-x-auto p-4">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Variable Name</th>
+                <th>Value / Data</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="vars-table-body">
+              <tr>
+                <td colspan="4" class="text-center text-slate-500 py-8">No cloud variables configured.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 5: FILES -->
+      <div id="tab-files" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-black text-white">Protected Files</h2>
+            <p class="text-slate-400 text-sm">Upload binaries or configs downloadable via client API</p>
+          </div>
+          <button onclick="openModal('upload-file-modal')" class="gradient-btn text-sm font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2">
+            <i data-lucide="upload" class="w-4 h-4"></i>
+            <span>Upload File</span>
+          </button>
+        </div>
+
+        <div class="glass-card overflow-x-auto p-4">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>File ID</th>
+                <th>Filename</th>
+                <th>Size</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="files-table-body">
+              <tr>
+                <td colspan="5" class="text-center text-slate-500 py-8">No files uploaded yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 6: LOGS -->
+      <div id="tab-logs" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-black text-white">Event Logs</h2>
+            <p class="text-slate-400 text-sm">Client authentication and security audit stream</p>
+          </div>
+          <button onclick="clearLogs()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition">
+            Clear Logs
+          </button>
+        </div>
+
+        <div class="glass-card overflow-x-auto p-4">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User / Key</th>
+                <th>Event Type</th>
+                <th>Message</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <tr>
+                <td colspan="5" class="text-center text-slate-500 py-8">No logs recorded yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 7: WEBHOOKS -->
+      <div id="tab-webhooks" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-black text-white">Discord Webhooks</h2>
+            <p class="text-slate-400 text-sm">Receive instant notifications in Discord on client actions</p>
+          </div>
+          <button onclick="openModal('create-webhook-modal')" class="gradient-btn text-sm font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Webhook</span>
+          </button>
+        </div>
+
+        <div class="glass-card overflow-x-auto p-4">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Webhook URL</th>
+                <th>Event Trigger</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="webhooks-table-body">
+              <tr>
+                <td colspan="4" class="text-center text-slate-500 py-8">No webhooks added.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 8: SDK INTEGRATION & EXAMPLES -->
+      <div id="tab-sdks" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black text-white">Client SDKs & Code Generator</h2>
+            <p class="text-slate-400 text-sm">Copy-paste ready authentication code pre-filled with your application credentials</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl text-indigo-300">
+            <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
+            <span>All official KeyAuth SDKs work 100% with ZimAuth</span>
+          </div>
+        </div>
+
+        <!-- Language Tabs Bar -->
+        <div class="flex overflow-x-auto space-x-2 pb-2 border-b border-slate-800">
+          <button onclick="switchSdkLang('python')" id="sdk-btn-python" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-500 text-white transition flex items-center space-x-1.5">
+            <span>🐍 Python</span>
+          </button>
+          <button onclick="switchSdkLang('csharp')" id="sdk-btn-csharp" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>💻 C# (.NET)</span>
+          </button>
+          <button onclick="switchSdkLang('cpp')" id="sdk-btn-cpp" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>⚡ C++</span>
+          </button>
+          <button onclick="switchSdkLang('rust')" id="sdk-btn-rust" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>🦀 Rust</span>
+          </button>
+          <button onclick="switchSdkLang('go')" id="sdk-btn-go" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>🐹 Go</span>
+          </button>
+          <button onclick="switchSdkLang('nodejs')" id="sdk-btn-nodejs" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>🟢 Node.js / Electron</span>
+          </button>
+          <button onclick="switchSdkLang('lua')" id="sdk-btn-lua" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>🌙 Lua</span>
+          </button>
+          <button onclick="switchSdkLang('autoit')" id="sdk-btn-autoit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5">
+            <span>📜 AutoIt</span>
+          </button>
+        </div>
+
+        <!-- Language View Content Container -->
+        <div id="sdk-content-container" class="space-y-6">
+          <div class="glass-card p-6 border-slate-800">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 id="sdk-view-title" class="text-base font-bold text-white flex items-center space-x-2">
+                  <i data-lucide="code" class="w-4 h-4 text-indigo-400"></i>
+                  <span>Complete Client Program (Ready to Run)</span>
+                </h3>
+                <p id="sdk-view-desc" class="text-xs text-slate-400 mt-1">Copy this code directly into your project to lock it with ZimAuth.</p>
+              </div>
+              <button onclick="copySnippet('sdk-code-display')" class="gradient-btn text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                <span>Copy Entire Code</span>
+              </button>
+            </div>
+            <pre class="bg-slate-950/90 p-5 rounded-xl font-mono text-xs text-indigo-200 overflow-x-auto border border-slate-800/80"><code id="sdk-code-display"># Loading SDK code...</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 9: SETTINGS -->
+      <div id="tab-settings" class="hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-black text-white">Application Settings</h2>
+          <p class="text-slate-400 text-sm">Configure security rules, client updates, and app status</p>
+        </div>
+
+        <div class="glass-card p-6 max-w-2xl">
+          <form onsubmit="saveAppSettings(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Application Version</label>
+              <input type="text" id="setting-version" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Update Download URL</label>
+              <input type="text" id="setting-download" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Executable Hash (SHA256)</label>
+              <input type="text" id="setting-hash" placeholder="Leave blank to disable client integrity check" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Custom Disabled Message</label>
+              <input type="text" id="setting-message" placeholder="Application is currently undergoing maintenance." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div class="flex items-center space-x-6 pt-2">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="setting-hwid" class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                <span class="text-sm font-semibold text-slate-300">Enforce HWID Lock</span>
+              </label>
+
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="setting-status" class="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                <span class="text-sm font-semibold text-slate-300">Application Active</span>
+              </label>
+            </div>
+
+            <div class="pt-4 flex items-center space-x-4">
+              <button type="submit" class="gradient-btn px-6 py-2.5 rounded-xl font-bold text-sm">Save Changes</button>
+              <button type="button" onclick="deleteCurrentApp()" class="px-6 py-2.5 rounded-xl font-semibold text-sm bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20">Delete App</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal: Create Application -->
+  <div id="create-app-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Create New Application</h3>
+        <button onclick="closeModal('create-app-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="handleCreateApp(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">App Name</label>
+          <input type="text" id="new-app-name" required placeholder="e.g. ValorantCheat, MySoftware" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Version</label>
+          <input type="text" id="new-app-version" value="1.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <button type="submit" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Create Application</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Generate Keys -->
+  <div id="create-key-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Generate License Keys</h3>
+        <button onclick="closeModal('create-key-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="handleGenerateKeys(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Amount</label>
+          <input type="number" id="gen-amount" value="1" min="1" max="500" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Key Mask</label>
+          <input type="text" id="gen-mask" value="ZIM-XXXXXX-XXXXXX" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Duration (Days)</label>
+            <input type="number" id="gen-days" value="30" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            <span class="text-[10px] text-slate-500">Use 99999 for Lifetime</span>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Level</label>
+            <input type="number" id="gen-level" value="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Note (Optional)</label>
+          <input type="text" id="gen-note" placeholder="Reseller / customer name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <button type="submit" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Generate License(s)</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Variable -->
+  <div id="create-var-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Add Cloud Variable</h3>
+        <button onclick="closeModal('create-var-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="handleCreateVar(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Variable Name</label>
+          <input type="text" id="new-var-name" required placeholder="e.g. ApiSecret, Offsets" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Variable Value</label>
+          <textarea id="new-var-data" rows="3" required placeholder="Payload or string value..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+        <button type="submit" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Save Variable</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Upload File -->
+  <div id="upload-file-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Upload Protected File</h3>
+        <button onclick="closeModal('upload-file-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="handleUploadFile(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">File ID (Optional)</label>
+          <input type="text" id="new-file-id" placeholder="e.g. 123456" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Select File</label>
+          <input type="file" id="new-file-input" required class="w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-500/20 file:text-indigo-300 hover:file:bg-indigo-500/30">
+        </div>
+        <button type="submit" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Upload Binary</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Webhook -->
+  <div id="create-webhook-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Add Discord Webhook</h3>
+        <button onclick="closeModal('create-webhook-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="handleCreateWebhook(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Webhook URL</label>
+          <input type="url" id="new-wh-url" required placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <button type="submit" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Save Webhook</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
