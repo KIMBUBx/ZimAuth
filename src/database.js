@@ -4,7 +4,22 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const DEFAULT_DB_FILE = path.join(__dirname, '..', 'zimauth.sqlite');
+function findCandidateFile(fileName) {
+  const candidates = [
+    path.join(__dirname, fileName),
+    path.join(__dirname, '..', fileName),
+    path.join(process.cwd(), fileName),
+    path.join(process.cwd(), 'src', fileName),
+    path.join('/var/task', fileName),
+    path.join('/var/task/src', fileName)
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+const DEFAULT_DB_FILE = findCandidateFile('zimauth.sqlite') || path.join(__dirname, '..', 'zimauth.sqlite');
 const DB_FILE = process.env.VERCEL
   ? path.join(os.tmpdir(), 'zimauth.sqlite')
   : DEFAULT_DB_FILE;
@@ -16,7 +31,22 @@ class DatabaseWrapper {
   }
 
   async init() {
-    const SQL = await initSqlJs();
+    // 1. Locate and load WebAssembly binary directly
+    let wasmBinary = null;
+    const wasmPath = findCandidateFile('sql-wasm.wasm') || 
+      path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+    
+    if (fs.existsSync(wasmPath)) {
+      try {
+        wasmBinary = fs.readFileSync(wasmPath);
+      } catch (err) {
+        console.warn('[DB] Failed reading wasm binary:', err.message);
+      }
+    }
+
+    const SQL = await initSqlJs(wasmBinary ? { wasmBinary } : {});
+
+    // 2. Prepare SQLite storage file
     if (process.env.VERCEL && !fs.existsSync(DB_FILE) && fs.existsSync(DEFAULT_DB_FILE)) {
       try {
         fs.copyFileSync(DEFAULT_DB_FILE, DB_FILE);
@@ -27,6 +57,9 @@ class DatabaseWrapper {
 
     if (fs.existsSync(DB_FILE)) {
       const fileBuffer = fs.readFileSync(DB_FILE);
+      this.db = new SQL.Database(fileBuffer);
+    } else if (fs.existsSync(DEFAULT_DB_FILE)) {
+      const fileBuffer = fs.readFileSync(DEFAULT_DB_FILE);
       this.db = new SQL.Database(fileBuffer);
     } else {
       this.db = new SQL.Database();

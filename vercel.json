@@ -7,6 +7,7 @@
       "config": {
         "includeFiles": [
           "zimauth.sqlite",
+          "sql-wasm.wasm",
           "public/**",
           "src/**"
         ]

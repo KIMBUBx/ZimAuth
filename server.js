@@ -99,6 +99,19 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Central Error Handler
+app.use((err, req, res, next) => {
+  console.error('[ZimAuth Error]', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).json({
+    success: false,
+    error: 'Internal Server Error',
+    message: err.message || String(err)
+  });
+});
+
 async function startServer() {
   await ensureDbReady();
 
