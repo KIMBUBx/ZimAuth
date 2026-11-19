@@ -65,20 +65,38 @@ app.get('/login', (req, res) => {
 });
 
 // Server Initialization
-async function startServer() {
-  await db.init();
-
-  // Create default admin account if table is empty
-  const accountCount = db.queryOne('SELECT COUNT(*) as c FROM accounts')?.c || 0;
-  if (accountCount === 0) {
-    const adminPass = hashPassword('admin123');
-    db.run(
-      `INSERT INTO accounts (username, email, password_hash, role, plan)
-       VALUES (?, ?, ?, 'admin', 'Enterprise Lifetime (Free)')`,
-      ['admin', 'admin@zimauth.cc', adminPass]
-    );
-    console.log('[ZimAuth] Default admin account created: admin / admin123 (Enterprise Plan Unlocked)');
+let dbInitPromise = null;
+function ensureDbReady() {
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      await db.init();
+      const accountCount = db.queryOne('SELECT COUNT(*) as c FROM accounts')?.c || 0;
+      if (accountCount === 0) {
+        const adminPass = hashPassword('admin123');
+        db.run(
+          `INSERT INTO accounts (username, email, password_hash, role, plan)
+           VALUES (?, ?, ?, 'admin', 'Enterprise Lifetime (Free)')`,
+          ['admin', 'admin@zimauth.cc', adminPass]
+        );
+        console.log('[ZimAuth] Default admin account created: admin / admin123 (Enterprise Plan Unlocked)');
+      }
+    })();
   }
+  return dbInitPromise;
+}
+
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbReady();
+    next();
+  } catch (err) {
+    console.error('[ZimAuth] DB ready error:', err);
+    next(err);
+  }
+});
+
+async function startServer() {
+  await ensureDbReady();
 
   app.listen(PORT, () => {
     console.log(`====================================================`);
@@ -90,6 +108,10 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('[ZimAuth] Failed to start server:', err);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('[ZimAuth] Failed to start server:', err);
+  });
+}
+
+module.exports = app;

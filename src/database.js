@@ -2,8 +2,12 @@
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-const DB_FILE = path.join(__dirname, '..', 'zimauth.sqlite');
+const DEFAULT_DB_FILE = path.join(__dirname, '..', 'zimauth.sqlite');
+const DB_FILE = process.env.VERCEL
+  ? path.join(os.tmpdir(), 'zimauth.sqlite')
+  : DEFAULT_DB_FILE;
 
 class DatabaseWrapper {
   constructor() {
@@ -13,6 +17,14 @@ class DatabaseWrapper {
 
   async init() {
     const SQL = await initSqlJs();
+    if (process.env.VERCEL && !fs.existsSync(DB_FILE) && fs.existsSync(DEFAULT_DB_FILE)) {
+      try {
+        fs.copyFileSync(DEFAULT_DB_FILE, DB_FILE);
+      } catch (e) {
+        console.warn('[DB] Could not copy initial DB to /tmp:', e.message);
+      }
+    }
+
     if (fs.existsSync(DB_FILE)) {
       const fileBuffer = fs.readFileSync(DB_FILE);
       this.db = new SQL.Database(fileBuffer);
