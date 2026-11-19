@@ -213,7 +213,7 @@
       </div>
 
       <!-- TAB 2: LICENSES / KEYS -->
-      <div id="tab-keys" class="hidden space-y-6">
+      <div id="tab-keys" class="hidden space-y-4">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 class="text-2xl font-black text-white">License Keys</h2>
@@ -227,6 +227,56 @@
           </div>
         </div>
 
+        <!-- Filter & Search Controls Bar -->
+        <div class="glass-card p-4 space-y-3">
+          <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <!-- Search input -->
+            <div class="relative flex-1">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="keys-search-input" oninput="handleKeySearch(this.value)" placeholder="ค้นหาคีย์, Note, HWID หรือ ผู้ใช้งาน..." class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <!-- Duration Filter -->
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:inline">ระยะเวลา:</span>
+              <select id="keys-duration-filter" onchange="handleDurationFilter(this.value)" class="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="all">ทุกระยะเวลา (All Days)</option>
+                <option value="1">1 วัน (1 Day)</option>
+                <option value="3">3 วัน (3 Days)</option>
+                <option value="7">7 วัน (7 Days)</option>
+                <option value="14">14 วัน (14 Days)</option>
+                <option value="30">30 วัน (30 Days)</option>
+                <option value="60">60 วัน (60 Days)</option>
+                <option value="90">90 วัน (90 Days)</option>
+                <option value="180">180 วัน (180 Days)</option>
+                <option value="365">365 วัน (1 ปี)</option>
+                <option value="lifetime">ถาวร (Lifetime / 99999+ วัน)</option>
+                <option value="custom">ระบุวันเอง (Custom Days)...</option>
+              </select>
+              <input type="number" id="keys-custom-days-input" oninput="handleCustomDaysInput(this.value)" placeholder="จำนวนวัน" min="1" class="w-24 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 hidden">
+            </div>
+
+            <!-- Status Filter & Reset -->
+            <div class="flex items-center space-x-2">
+              <select id="keys-status-filter" onchange="handleStatusFilter(this.value)" class="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="all">สถานะทั้งหมด</option>
+                <option value="1">Active / ยังไม่ใช้</option>
+                <option value="0">Used / ใช้งานแล้ว</option>
+                <option value="2">Banned / ถูกแบน</option>
+                <option value="3">Paused / หยุดชั่วคราว</option>
+              </select>
+              <button onclick="resetKeysFilter()" title="รีเซ็ตตัวกรองทั้งหมด" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center space-x-1">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Pagination Bar -->
+        <div id="keys-pagination-top" class="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-1 text-xs text-slate-400">
+        </div>
+
+        <!-- Keys Table Card -->
         <div class="glass-card overflow-x-auto p-4">
           <table class="custom-table">
             <thead>
@@ -241,18 +291,31 @@
             </thead>
             <tbody id="keys-table-body">
               <tr>
-                <td colspan="6" class="text-center text-slate-500 py-8">No keys found. Click 'Generate Keys' above.</td>
+                <td colspan="6" class="text-center text-slate-500 py-8">กำลังโหลดข้อมูลคีย์...</td>
               </tr>
             </tbody>
           </table>
         </div>
+
+        <!-- Bottom Pagination Bar -->
+        <div id="keys-pagination-bottom" class="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-1 text-xs text-slate-400">
+        </div>
       </div>
 
       <!-- TAB 3: APP USERS -->
-      <div id="tab-users" class="hidden space-y-6">
-        <div>
-          <h2 class="text-2xl font-black text-white">Application Users</h2>
-          <p class="text-slate-400 text-sm">Users registered through client applications</p>
+      <div id="tab-users" class="hidden space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black text-white">Application Users</h2>
+            <p class="text-slate-400 text-sm">Users registered through client applications</p>
+          </div>
+          <div class="flex items-center space-x-3 w-full sm:w-auto">
+            <div class="relative flex-1 sm:w-64">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="users-search-input" oninput="handleUserSearch(this.value)" placeholder="ค้นหาสมาชิก, HWID, IP..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            </div>
+            <span id="users-count-badge" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-indigo-300 whitespace-nowrap">0 สมาชิก</span>
+          </div>
         </div>
 
         <div class="glass-card overflow-x-auto p-4">
@@ -573,8 +636,50 @@
           <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Note (Optional)</label>
           <input type="text" id="gen-note" placeholder="Reseller / customer name" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
         </div>
-        <button type="submit" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Generate License(s)</button>
+        <button type="submit" id="gen-submit-btn" class="w-full gradient-btn py-2.5 rounded-xl font-bold text-sm">Generate License(s)</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Generated Keys Result / Copy All Keys -->
+  <div id="generated-keys-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-lg w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">สร้างคีย์สำเร็จ!</h3>
+            <p id="generated-keys-subtitle" class="text-xs text-slate-400">คีย์พร้อมใช้งานและถูกบันทึกลงฐานข้อมูลแล้ว</p>
+          </div>
+        </div>
+        <button onclick="closeModal('generated-keys-modal')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs font-semibold text-slate-300 uppercase">รายการคีย์ที่สร้างทั้งหมด</label>
+          <span id="generated-keys-count" class="text-xs text-indigo-400 font-mono font-bold">0 คีย์</span>
+        </div>
+        <textarea id="generated-keys-textarea" readonly rows="8" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 text-xs font-mono text-indigo-200 focus:outline-none select-all resize-y" placeholder="Keys will appear here..."></textarea>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center gap-3 pt-2">
+        <button id="btn-copy-all-keys" onclick="copyAllGeneratedKeys()" class="w-full sm:flex-1 gradient-btn py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-indigo-500/25">
+          <i data-lucide="copy" class="w-4 h-4"></i>
+          <span id="btn-copy-all-text">คัดลอกคีย์ทั้งหมดที่พึ่งสร้าง</span>
+        </button>
+        <button onclick="downloadGeneratedKeys()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm flex items-center justify-center space-x-2 transition">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>บันทึกไฟล์ .txt</span>
+        </button>
+        <button onclick="closeModal('generated-keys-modal')" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white text-sm transition">
+          ปิด
+        </button>
+      </div>
     </div>
   </div>
 

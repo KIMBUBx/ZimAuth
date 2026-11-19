@@ -102,6 +102,10 @@ class DatabaseWrapper {
   }
 
   async init() {
+    if (this.db) {
+      return this;
+    }
+
     // 1. Locate and load WebAssembly binary directly
     let wasmBinary = null;
     const wasmPath = findCandidateFile('sql-wasm.wasm') || 
@@ -163,11 +167,7 @@ class DatabaseWrapper {
   }
 
   save() {
-    if (this.saveTimeout) return;
-    this.saveTimeout = setTimeout(() => {
-      this.saveImmediate();
-      this.saveTimeout = null;
-    }, 200);
+    this.saveImmediate();
   }
 
   saveImmediate() {
@@ -177,7 +177,14 @@ class DatabaseWrapper {
       const buffer = Buffer.from(data);
       try {
         fs.writeFileSync(DB_FILE, buffer);
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[DB] Could not write to DB_FILE:', e.message);
+      }
+      if (DEFAULT_DB_FILE && DEFAULT_DB_FILE !== DB_FILE && !process.env.VERCEL) {
+        try {
+          fs.writeFileSync(DEFAULT_DB_FILE, buffer);
+        } catch (e) {}
+      }
       
       // Upload to Vercel Blob if token available
       if (process.env.BLOB_READ_WRITE_TOKEN) {
@@ -187,6 +194,29 @@ class DatabaseWrapper {
       }
     } catch (err) {
       console.error('[DB] Save error:', err);
+    }
+  }
+
+  async persist() {
+    if (!this.db) return;
+    try {
+      const data = this.db.export();
+      const buffer = Buffer.from(data);
+      try {
+        fs.writeFileSync(DB_FILE, buffer);
+      } catch (e) {
+        console.warn('[DB] Could not write to DB_FILE:', e.message);
+      }
+      if (DEFAULT_DB_FILE && DEFAULT_DB_FILE !== DB_FILE && !process.env.VERCEL) {
+        try {
+          fs.writeFileSync(DEFAULT_DB_FILE, buffer);
+        } catch (e) {}
+      }
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        await uploadBlobDb(buffer);
+      }
+    } catch (err) {
+      console.error('[DB] Persist error:', err);
     }
   }
 
@@ -350,7 +380,7 @@ class DatabaseWrapper {
     }
   }
 
-  run(sql, params = []) {
+  run(sql, params = [], autoSave = true) {
     try {
       this.db.run(sql, params);
       const res = this.db.exec('SELECT last_insert_rowid() AS lastId, changes() AS changes');
@@ -360,7 +390,9 @@ class DatabaseWrapper {
         lastInsertRowid = res[0].values[0][0];
         changes = res[0].values[0][1];
       }
-      this.save();
+      if (autoSave) {
+        this.saveImmediate();
+      }
       return { lastInsertRowid, changes };
     } catch (err) {
       console.error('[DB run error]', sql, params, err);

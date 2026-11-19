@@ -304,53 +304,305 @@ async function deleteCurrentApp() {
 }
 
 // ================= KEYS =================
+let keysData = [];
+let keysFiltered = [];
+let keysCurrentPage = 1;
+const KEYS_PER_PAGE = 50;
+let keysSearchTerm = '';
+let keysDurationFilter = 'all';
+let keysCustomDays = null;
+let keysStatusFilter = 'all';
+let latestGeneratedKeys = [];
 
 async function loadKeys() {
   if (!currentApp) return;
   try {
     const res = await fetch(`/api/dashboard/apps/${currentApp.id}/keys`);
     const data = await res.json();
-    const tbody = document.getElementById('keys-table-body');
-    tbody.innerHTML = '';
-
-    if (!data.keys || data.keys.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-8">No keys generated yet.</td></tr>';
-      return;
-    }
-
-    data.keys.forEach((k) => {
-      let statusBadge = '<span class="badge badge-success">Active / Unused</span>';
-      if (k.status === 0) statusBadge = '<span class="badge badge-primary">Used</span>';
-      if (k.status === 2) statusBadge = '<span class="badge badge-danger">Banned</span>';
-      if (k.status === 3) statusBadge = '<span class="badge badge-warning">Paused</span>';
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><code class="text-xs font-bold text-indigo-300">${k.key_str}</code></td>
-        <td><span class="text-xs text-slate-300">${k.duration_days >= 99999 ? 'Lifetime' : k.duration_days + ' Days'}</span> <span class="text-slate-500">(Lvl ${k.level})</span></td>
-        <td>${statusBadge}</td>
-        <td><span class="text-xs text-slate-400">${k.used_by || '---'}</span></td>
-        <td><code class="text-[11px] text-slate-400 truncate max-w-[120px] inline-block">${k.hwid || 'None'}</code></td>
-        <td>
-          <div class="flex items-center space-x-2">
-            <button onclick="keyAction(${k.id}, 'reset_hwid')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300" title="Reset HWID">
-              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="keyAction(${k.id}, '${k.status === 2 ? 'unban' : 'ban'}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs ${k.status === 2 ? 'text-emerald-400' : 'text-rose-400'}" title="${k.status === 2 ? 'Unban' : 'Ban'}">
-              <i data-lucide="${k.status === 2 ? 'shield-check' : 'shield-alert'}" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="deleteKey(${k.id})" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400" title="Delete Key">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-    lucide.createIcons();
+    keysData = Array.isArray(data.keys) ? data.keys : [];
+    applyKeysFilter();
   } catch (err) {
     console.error('Error loading keys:', err);
+    showToast('Failed to load keys: ' + err.message, 'error');
   }
+}
+
+function handleKeySearch(val) {
+  keysSearchTerm = (val || '').trim().toLowerCase();
+  keysCurrentPage = 1;
+  applyKeysFilter();
+}
+
+function handleDurationFilter(val) {
+  keysDurationFilter = val;
+  const customInput = document.getElementById('keys-custom-days-input');
+  if (val === 'custom') {
+    if (customInput) {
+      customInput.classList.remove('hidden');
+      customInput.focus();
+    }
+  } else {
+    if (customInput) {
+      customInput.classList.add('hidden');
+    }
+    keysCustomDays = null;
+  }
+  keysCurrentPage = 1;
+  applyKeysFilter();
+}
+
+function handleCustomDaysInput(val) {
+  const num = parseInt(val);
+  keysCustomDays = !isNaN(num) && num > 0 ? num : null;
+  keysCurrentPage = 1;
+  applyKeysFilter();
+}
+
+function handleStatusFilter(val) {
+  keysStatusFilter = val;
+  keysCurrentPage = 1;
+  applyKeysFilter();
+}
+
+function resetKeysFilter() {
+  keysSearchTerm = '';
+  keysDurationFilter = 'all';
+  keysCustomDays = null;
+  keysStatusFilter = 'all';
+  const searchInput = document.getElementById('keys-search-input');
+  if (searchInput) searchInput.value = '';
+  const durSelect = document.getElementById('keys-duration-filter');
+  if (durSelect) durSelect.value = 'all';
+  const customInput = document.getElementById('keys-custom-days-input');
+  if (customInput) {
+    customInput.value = '';
+    customInput.classList.add('hidden');
+  }
+  const statusSelect = document.getElementById('keys-status-filter');
+  if (statusSelect) statusSelect.value = 'all';
+
+  keysCurrentPage = 1;
+  applyKeysFilter();
+}
+
+function applyKeysFilter() {
+  keysFiltered = keysData.filter((k) => {
+    // 1. Duration filter
+    if (keysDurationFilter === 'lifetime') {
+      if (k.duration_days < 99999) return false;
+    } else if (keysDurationFilter === 'custom') {
+      if (keysCustomDays !== null && k.duration_days !== keysCustomDays) return false;
+    } else if (keysDurationFilter !== 'all') {
+      const targetDays = parseInt(keysDurationFilter);
+      if (k.duration_days !== targetDays) return false;
+    }
+
+    // 2. Status filter
+    if (keysStatusFilter !== 'all') {
+      const targetStatus = parseInt(keysStatusFilter);
+      if (k.status !== targetStatus) return false;
+    }
+
+    // 3. Search filter
+    if (keysSearchTerm) {
+      const keyStr = (k.key_str || '').toLowerCase();
+      const note = (k.note || '').toLowerCase();
+      const usedBy = (k.used_by || '').toLowerCase();
+      const hwid = (k.hwid || '').toLowerCase();
+      if (!keyStr.includes(keysSearchTerm) &&
+          !note.includes(keysSearchTerm) &&
+          !usedBy.includes(keysSearchTerm) &&
+          !hwid.includes(keysSearchTerm)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const totalPages = Math.ceil(keysFiltered.length / KEYS_PER_PAGE) || 1;
+  if (keysCurrentPage > totalPages) {
+    keysCurrentPage = totalPages;
+  }
+  if (keysCurrentPage < 1) {
+    keysCurrentPage = 1;
+  }
+
+  renderKeysTable();
+  renderKeysPagination();
+}
+
+function changeKeysPage(page, scrollToTop = false) {
+  const totalPages = Math.ceil(keysFiltered.length / KEYS_PER_PAGE) || 1;
+  if (page < 1) page = 1;
+  if (page > totalPages) page = totalPages;
+  keysCurrentPage = page;
+  renderKeysTable();
+  renderKeysPagination();
+  if (scrollToTop) {
+    const tableEl = document.getElementById('tab-keys');
+    if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function renderKeysPagination() {
+  const totalItems = keysFiltered.length;
+  const totalPages = Math.ceil(totalItems / KEYS_PER_PAGE) || 1;
+  const page = keysCurrentPage;
+
+  const startIndex = totalItems === 0 ? 0 : (page - 1) * KEYS_PER_PAGE + 1;
+  const endIndex = Math.min(page * KEYS_PER_PAGE, totalItems);
+
+  const topEl = document.getElementById('keys-pagination-top');
+  const bottomEl = document.getElementById('keys-pagination-bottom');
+
+  function buildHtml(isBottom) {
+    let filterNote = '';
+    if (keysFiltered.length !== keysData.length) {
+      filterNote = `<span class="text-slate-500">(กรองจากทั้งหมด ${keysData.length} คีย์)</span>`;
+    }
+
+    let pagesHtml = '';
+    const pagesToShow = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pagesToShow.push(i);
+    } else {
+      pagesToShow.push(1);
+      if (page > 3) {
+        pagesToShow.push('...');
+      }
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      for (let i = start; i <= end; i++) {
+        if (!pagesToShow.includes(i)) pagesToShow.push(i);
+      }
+      if (page < totalPages - 2) {
+        pagesToShow.push('...');
+      }
+      if (!pagesToShow.includes(totalPages)) {
+        pagesToShow.push(totalPages);
+      }
+    }
+
+    pagesHtml = pagesToShow.map((p) => {
+      if (p === '...') {
+        return `<span class="px-2 py-1 text-slate-500 select-none">...</span>`;
+      }
+      if (p === page) {
+        return `<button class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-500/30 transition">${p}</button>`;
+      }
+      return `<button onclick="changeKeysPage(${p}, ${isBottom})" class="px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">${p}</button>`;
+    }).join(' ');
+
+    const prevDisabled = page <= 1;
+    const nextDisabled = page >= totalPages;
+
+    return `
+      <div class="flex items-center space-x-2 text-xs text-slate-400">
+        <span>แสดง <b class="text-slate-200">${startIndex} - ${endIndex}</b> จาก <b class="text-white">${totalItems}</b> คีย์ (หน้า ${page}/${totalPages})</span>
+        ${filterNote}
+      </div>
+      <div class="flex items-center space-x-1.5 flex-wrap">
+        <button onclick="changeKeysPage(1, ${isBottom})" ${prevDisabled ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs disabled:opacity-40 disabled:cursor-not-allowed transition" title="หน้าแรก">«</button>
+        <button onclick="changeKeysPage(${page - 1}, ${isBottom})" ${prevDisabled ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs disabled:opacity-40 disabled:cursor-not-allowed transition" title="หน้าก่อนหน้า">‹ ย้อนกลับ</button>
+        <div class="flex items-center space-x-1 mx-1">
+          ${pagesHtml}
+        </div>
+        <button onclick="changeKeysPage(${page + 1}, ${isBottom})" ${nextDisabled ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs disabled:opacity-40 disabled:cursor-not-allowed transition" title="หน้าถัดไป">ถัดไป ›</button>
+        <button onclick="changeKeysPage(${totalPages}, ${isBottom})" ${nextDisabled ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs disabled:opacity-40 disabled:cursor-not-allowed transition" title="หน้าสุดท้าย">»</button>
+      </div>
+    `;
+  }
+
+  if (topEl) topEl.innerHTML = buildHtml(false);
+  if (bottomEl) bottomEl.innerHTML = buildHtml(true);
+}
+
+function renderKeysTable() {
+  const tbody = document.getElementById('keys-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (keysFiltered.length === 0) {
+    const msg = keysData.length === 0
+      ? 'ยังไม่มีคีย์ในแอปนี้ คลิก "Generate Keys" ด้านบนเพื่อสร้างคีย์'
+      : 'ไม่พบคีย์ที่ตรงกับเงื่อนไขการค้นหา/ตัวกรอง';
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-8">${msg}</td></tr>`;
+    return;
+  }
+
+  const startIndex = (keysCurrentPage - 1) * KEYS_PER_PAGE;
+  const pageSlice = keysFiltered.slice(startIndex, startIndex + KEYS_PER_PAGE);
+
+  pageSlice.forEach((k) => {
+    let statusBadge = '<span class="badge badge-success">Active / ยังไม่ใช้</span>';
+    if (k.status === 0) statusBadge = '<span class="badge badge-primary">Used / ใช้แล้ว</span>';
+    if (k.status === 2) statusBadge = '<span class="badge badge-danger">Banned / แบน</span>';
+    if (k.status === 3) statusBadge = '<span class="badge badge-warning">Paused / หยุด</span>';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="flex items-center space-x-2">
+          <code class="text-xs font-bold text-indigo-300 select-all">${k.key_str}</code>
+          <button onclick="copyKeyText('${k.key_str}')" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition" title="คัดลอกคีย์นี้">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+        ${k.note ? `<div class="text-[11px] text-slate-500 truncate max-w-[200px]" title="${k.note}">📝 ${k.note}</div>` : ''}
+      </td>
+      <td>
+        <span class="text-xs font-semibold text-slate-200">${k.duration_days >= 99999 ? 'Lifetime (ถาวร)' : k.duration_days + ' วัน'}</span>
+        <span class="text-slate-500 text-xs">(Lvl ${k.level})</span>
+      </td>
+      <td>${statusBadge}</td>
+      <td><span class="text-xs text-slate-400 font-mono">${k.used_by || '---'}</span></td>
+      <td><code class="text-[11px] text-slate-400 truncate max-w-[140px] inline-block font-mono" title="${k.hwid || 'None'}">${k.hwid || 'None'}</code></td>
+      <td>
+        <div class="flex items-center space-x-1.5">
+          <button onclick="keyAction(${k.id}, 'reset_hwid')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition" title="รีเซ็ต HWID">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="keyAction(${k.id}, '${k.status === 2 ? 'unban' : 'ban'}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs ${k.status === 2 ? 'text-emerald-400' : 'text-rose-400'} transition" title="${k.status === 2 ? 'ปลดแบน' : 'แบนคีย์'}">
+            <i data-lucide="${k.status === 2 ? 'shield-check' : 'shield-alert'}" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="deleteKey(${k.id})" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400 transition" title="ลบคีย์">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function copyKeyText(text) {
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('คัดลอกคีย์เรียบร้อยแล้ว: ' + text, 'success');
+    }).catch(() => {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast('คัดลอกเรียบร้อยแล้ว!', 'success');
+  } catch (e) {
+    showToast('Failed to copy', 'error');
+  }
+  document.body.removeChild(ta);
 }
 
 async function handleGenerateKeys(e) {
@@ -363,6 +615,12 @@ async function handleGenerateKeys(e) {
   const level = document.getElementById('gen-level').value;
   const note = document.getElementById('gen-note').value;
 
+  const submitBtn = document.getElementById('gen-submit-btn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'กำลังสร้างคีย์...';
+  }
+
   try {
     const res = await fetch(`/api/dashboard/apps/${currentApp.id}/keys`, {
       method: 'POST',
@@ -371,16 +629,84 @@ async function handleGenerateKeys(e) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast(data.message, 'success');
       closeModal('create-key-modal');
+      latestGeneratedKeys = Array.isArray(data.keys) ? data.keys : [];
+
+      // Open Generated Keys Result Modal
+      const textarea = document.getElementById('generated-keys-textarea');
+      const countLabel = document.getElementById('generated-keys-count');
+      const subtitle = document.getElementById('generated-keys-subtitle');
+
+      if (textarea) textarea.value = latestGeneratedKeys.join('\n');
+      if (countLabel) countLabel.textContent = `${latestGeneratedKeys.length} คีย์`;
+      if (subtitle) subtitle.textContent = `สร้างสำเร็จ ${latestGeneratedKeys.length} คีย์สำหรับแอป ${currentApp.name}`;
+
+      const btnCopyText = document.getElementById('btn-copy-all-text');
+      if (btnCopyText) btnCopyText.textContent = `คัดลอกคีย์ทั้งหมด (${latestGeneratedKeys.length} คีย์)`;
+
+      openModal('generated-keys-modal');
+
+      showToast(data.message || `สร้างสำเร็จ ${latestGeneratedKeys.length} คีย์!`, 'success');
       await onSelectApp(currentApp.id);
-      loadKeys();
+      keysCurrentPage = 1;
+      await loadKeys();
     } else {
       showToast(data.message, 'error');
     }
   } catch (err) {
     showToast('Failed to generate keys: ' + err.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Generate License(s)';
+    }
   }
+}
+
+function copyAllGeneratedKeys() {
+  if (!latestGeneratedKeys || latestGeneratedKeys.length === 0) {
+    showToast('ไม่มีรายการคีย์ที่จะคัดลอก', 'warning');
+    return;
+  }
+  const text = latestGeneratedKeys.join('\n');
+  const btnText = document.getElementById('btn-copy-all-text');
+
+  function onSuccess() {
+    showToast(`คัดลอกคีย์ทั้งหมด (${latestGeneratedKeys.length} คีย์) สำเร็จแล้ว!`, 'success');
+    if (btnText) {
+      const orig = btnText.textContent;
+      btnText.textContent = `✓ คัดลอกสำเร็จแล้ว (${latestGeneratedKeys.length} คีย์)`;
+      setTimeout(() => {
+        btnText.textContent = orig;
+      }, 2500);
+    }
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+      fallbackCopy(text);
+      onSuccess();
+    });
+  } else {
+    fallbackCopy(text);
+    onSuccess();
+  }
+}
+
+function downloadGeneratedKeys() {
+  if (!latestGeneratedKeys || latestGeneratedKeys.length === 0) return;
+  const content = latestGeneratedKeys.join('\n');
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.href = url;
+  a.download = `keys-${(currentApp ? currentApp.name : 'export')}-${dateStr}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('ดาวน์โหลดไฟล์รายการคีย์เรียบร้อยแล้ว!', 'info');
 }
 
 async function keyAction(keyId, action) {
@@ -401,12 +727,12 @@ async function keyAction(keyId, action) {
 }
 
 async function deleteKey(keyId) {
-  if (!confirm('Are you sure you want to delete this key?')) return;
+  if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบคีย์นี้? (หากลบแล้วจะไม่สามารถกู้คืนได้)')) return;
   try {
     const res = await fetch(`/api/dashboard/apps/${currentApp.id}/keys/${keyId}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.success) {
-      showToast('Key deleted.', 'info');
+      showToast('ลบคีย์เรียบร้อยแล้ว', 'info');
       loadKeys();
     }
   } catch (err) {
@@ -415,49 +741,86 @@ async function deleteKey(keyId) {
 }
 
 // ================= APP USERS =================
+let usersData = [];
+let usersFiltered = [];
+let usersSearchTerm = '';
 
 async function loadUsers() {
   if (!currentApp) return;
   try {
     const res = await fetch(`/api/dashboard/apps/${currentApp.id}/users`);
     const data = await res.json();
-    const tbody = document.getElementById('users-table-body');
-    tbody.innerHTML = '';
-
-    if (!data.users || data.users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-8">No registered users yet.</td></tr>';
-      return;
-    }
-
-    data.users.forEach((u) => {
-      const isBanned = u.status === 2;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><span class="font-bold text-white text-sm">${u.username}</span></td>
-        <td><code class="text-[11px] text-slate-400">${u.hwid || 'Not Bound'}</code></td>
-        <td><span class="text-xs text-slate-400 font-mono">${u.ip || '---'}</span></td>
-        <td><span class="badge ${isBanned ? 'badge-danger' : 'badge-success'}">${isBanned ? 'Banned' : 'Active'}</span></td>
-        <td><span class="text-xs text-slate-300">${u.expiry_at ? new Date(u.expiry_at).toLocaleDateString() : 'Lifetime'}</span></td>
-        <td>
-          <div class="flex items-center space-x-2">
-            <button onclick="userAction(${u.id}, 'reset_hwid')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300" title="Reset HWID">
-              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="userAction(${u.id}, '${isBanned ? 'unban' : 'ban'}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs ${isBanned ? 'text-emerald-400' : 'text-rose-400'}" title="${isBanned ? 'Unban' : 'Ban'}">
-              <i data-lucide="${isBanned ? 'shield-check' : 'shield-alert'}" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="deleteUser(${u.id})" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400" title="Delete User">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-    lucide.createIcons();
+    usersData = Array.isArray(data.users) ? data.users : [];
+    applyUsersFilter();
   } catch (err) {
     console.error('Error loading users:', err);
   }
+}
+
+function handleUserSearch(val) {
+  usersSearchTerm = (val || '').trim().toLowerCase();
+  applyUsersFilter();
+}
+
+function applyUsersFilter() {
+  if (!usersSearchTerm) {
+    usersFiltered = [...usersData];
+  } else {
+    usersFiltered = usersData.filter((u) => {
+      const uname = (u.username || '').toLowerCase();
+      const hwid = (u.hwid || '').toLowerCase();
+      const ip = (u.ip || '').toLowerCase();
+      return uname.includes(usersSearchTerm) || hwid.includes(usersSearchTerm) || ip.includes(usersSearchTerm);
+    });
+  }
+
+  const badge = document.getElementById('users-count-badge');
+  if (badge) {
+    badge.textContent = `${usersFiltered.length} สมาชิก` + (usersFiltered.length !== usersData.length ? ` (จาก ${usersData.length})` : '');
+  }
+
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('users-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (usersFiltered.length === 0) {
+    const msg = usersData.length === 0
+      ? 'ยังไม่มีสมาชิกที่ลงทะเบียนผ่านแอปนี้'
+      : 'ไม่พบสมาชิกที่ตรงกับการค้นหา';
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-8">${msg}</td></tr>`;
+    return;
+  }
+
+  usersFiltered.forEach((u) => {
+    const isBanned = u.status === 2;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="font-bold text-white text-sm">${u.username}</span></td>
+      <td><code class="text-[11px] text-slate-400 font-mono" title="${u.hwid || 'Not Bound'}">${u.hwid || 'Not Bound'}</code></td>
+      <td><span class="text-xs text-slate-400 font-mono">${u.ip || '---'}</span></td>
+      <td><span class="badge ${isBanned ? 'badge-danger' : 'badge-success'}">${isBanned ? 'Banned' : 'Active'}</span></td>
+      <td><span class="text-xs text-slate-300">${u.expiry_at ? new Date(u.expiry_at).toLocaleDateString() : 'Lifetime'}</span></td>
+      <td>
+        <div class="flex items-center space-x-2">
+          <button onclick="userAction(${u.id}, 'reset_hwid')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition" title="Reset HWID">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="userAction(${u.id}, '${isBanned ? 'unban' : 'ban'}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs ${isBanned ? 'text-emerald-400' : 'text-rose-400'} transition" title="${isBanned ? 'Unban' : 'Ban'}">
+            <i data-lucide="${isBanned ? 'shield-check' : 'shield-alert'}" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="deleteUser(${u.id})" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400 transition" title="Delete User">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
 }
 
 async function userAction(userId, action) {

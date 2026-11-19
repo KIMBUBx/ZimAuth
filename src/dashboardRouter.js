@@ -217,12 +217,39 @@ router.get('/apps/:id/keys', authMiddleware, (req, res) => {
   const app = db.queryOne('SELECT id FROM applications WHERE id = ? AND owner_id = ?', [req.params.id, req.user.id]);
   if (!app) return res.status(404).json({ success: false, message: 'Application not found.' });
 
-  const keys = db.queryAll('SELECT * FROM app_keys WHERE app_id = ? ORDER BY id DESC', [req.params.id]);
-  return res.json({ success: true, keys });
+  const { search = '', days, status } = req.query;
+  let sql = 'SELECT * FROM app_keys WHERE app_id = ?';
+  const params = [req.params.id];
+
+  if (status !== undefined && status !== '' && status !== 'all') {
+    sql += ' AND status = ?';
+    params.push(parseInt(status));
+  }
+
+  if (days !== undefined && days !== '' && days !== 'all') {
+    if (days === 'lifetime') {
+      sql += ' AND duration_days >= 99999';
+    } else {
+      sql += ' AND duration_days = ?';
+      params.push(parseInt(days));
+    }
+  }
+
+  if (search && search.trim()) {
+    const s = `%${search.trim()}%`;
+    sql += ' AND (key_str LIKE ? OR note LIKE ? OR used_by LIKE ? OR hwid LIKE ?)';
+    params.push(s, s, s, s);
+  }
+
+  sql += ' ORDER BY id DESC';
+
+  const keys = db.queryAll(sql, params);
+  const totalCount = db.queryOne('SELECT COUNT(*) as c FROM app_keys WHERE app_id = ?', [req.params.id])?.c || 0;
+  return res.json({ success: true, keys, totalCount });
 });
 
 // Generate single or bulk keys
-router.post('/apps/:id/keys', authMiddleware, (req, res) => {
+router.post('/apps/:id/keys', authMiddleware, async (req, res) => {
   const app = db.queryOne('SELECT id FROM applications WHERE id = ? AND owner_id = ?', [req.params.id, req.user.id]);
   if (!app) return res.status(404).json({ success: false, message: 'Application not found.' });
 
@@ -230,15 +257,26 @@ router.post('/apps/:id/keys', authMiddleware, (req, res) => {
   const count = Math.min(Math.max(parseInt(amount) || 1, 1), 500);
 
   const generated = [];
+  try {
+    db.run('BEGIN TRANSACTION', [], false);
+  } catch (e) {}
+
   for (let i = 0; i < count; i++) {
     const keyStr = generateLicenseKey(mask);
     db.run(
       `INSERT INTO app_keys (app_id, key_str, duration_days, level, note, status)
        VALUES (?, ?, ?, ?, ?, 1)`,
-      [app.id, keyStr, parseInt(duration_days) || 30, parseInt(level) || 1, note]
+      [app.id, keyStr, parseInt(duration_days) || 30, parseInt(level) || 1, note],
+      false
     );
     generated.push(keyStr);
   }
+
+  try {
+    db.run('COMMIT', [], false);
+  } catch (e) {}
+
+  await db.persist();
 
   return res.json({
     success: true,
@@ -248,7 +286,7 @@ router.post('/apps/:id/keys', authMiddleware, (req, res) => {
 });
 
 // Update key (reset HWID, ban, pause, unban)
-router.put('/apps/:id/keys/:keyId', authMiddleware, (req, res) => {
+router.put('/apps/:id/keys/:keyId', authMiddleware, async (req, res) => {
   const { action } = req.body; // 'reset_hwid', 'ban', 'unban', 'pause', 'unpause'
   const key = db.queryOne(
     'SELECT k.* FROM app_keys k JOIN applications a ON k.app_id = a.id WHERE k.id = ? AND a.owner_id = ?',
@@ -258,18 +296,23 @@ router.put('/apps/:id/keys/:keyId', authMiddleware, (req, res) => {
 
   if (action === 'reset_hwid') {
     db.run('UPDATE app_keys SET hwid = "" WHERE id = ?', [key.id]);
+    await db.persist();
     return res.json({ success: true, message: 'HWID reset successfully.' });
   } else if (action === 'ban') {
     db.run('UPDATE app_keys SET status = 2 WHERE id = ?', [key.id]);
+    await db.persist();
     return res.json({ success: true, message: 'Key banned.' });
   } else if (action === 'unban') {
     db.run('UPDATE app_keys SET status = 1 WHERE id = ?', [key.id]);
+    await db.persist();
     return res.json({ success: true, message: 'Key unbanned.' });
   } else if (action === 'pause') {
     db.run('UPDATE app_keys SET status = 3 WHERE id = ?', [key.id]);
+    await db.persist();
     return res.json({ success: true, message: 'Key paused.' });
   } else if (action === 'unpause') {
     db.run('UPDATE app_keys SET status = 0 WHERE id = ?', [key.id]);
+    await db.persist();
     return res.json({ success: true, message: 'Key unpaused.' });
   }
 
@@ -277,7 +320,7 @@ router.put('/apps/:id/keys/:keyId', authMiddleware, (req, res) => {
 });
 
 // Delete key
-router.delete('/apps/:id/keys/:keyId', authMiddleware, (req, res) => {
+router.delete('/apps/:id/keys/:keyId', authMiddleware, async (req, res) => {
   const key = db.queryOne(
     'SELECT k.id FROM app_keys k JOIN applications a ON k.app_id = a.id WHERE k.id = ? AND a.owner_id = ?',
     [req.params.keyId, req.user.id]
@@ -285,6 +328,7 @@ router.delete('/apps/:id/keys/:keyId', authMiddleware, (req, res) => {
   if (!key) return res.status(404).json({ success: false, message: 'Key not found.' });
 
   db.run('DELETE FROM app_keys WHERE id = ?', [key.id]);
+  await db.persist();
   return res.json({ success: true, message: 'Key deleted.' });
 });
 
