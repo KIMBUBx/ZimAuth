@@ -13,7 +13,7 @@ function verifyPassword(password, hash) {
   return bcrypt.compareSync(password, hash);
 }
 
-function generateToken(payload, expiresIn = '7d') {
+function generateToken(payload, expiresIn = '30d') {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 

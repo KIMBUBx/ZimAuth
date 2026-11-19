@@ -19,7 +19,7 @@ function findCandidateFile(fileName) {
   return null;
 }
 
-const DEFAULT_DB_FILE = findCandidateFile('zimauth.sqlite') || path.join(__dirname, '..', 'zimauth.sqlite');
+const DEFAULT_DB_FILE = path.resolve(findCandidateFile('zimauth.sqlite') || path.join(__dirname, '..', 'zimauth.sqlite'));
 const DB_FILE = process.env.VERCEL
   ? path.join(os.tmpdir(), 'zimauth.sqlite')
   : DEFAULT_DB_FILE;
@@ -28,35 +28,30 @@ const DB_FILE = process.env.VERCEL
 async function downloadBlobDb() {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) return null;
-  try {
-    const { get } = require('@vercel/blob');
-    const result = await get('zimauth.sqlite', { access: 'private', token });
-    if (result && result.stream) {
-      const chunks = [];
-      for await (const chunk of result.stream) {
-        chunks.push(chunk);
-      }
-      return Buffer.concat(chunks);
-    }
-  } catch (err) {
-    console.warn('[Blob] Direct get failed, trying list fallback:', err.message);
-  }
 
   try {
     const { list } = require('@vercel/blob');
     const { blobs } = await list({ token });
-    const target = blobs.find((b) => b.pathname === 'zimauth.sqlite');
-    if (target && target.downloadUrl) {
-      const resp = await fetch(target.downloadUrl, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+    if (!blobs || blobs.length === 0) return null;
+
+    const targets = blobs.filter((b) => b.pathname === 'zimauth.sqlite' || b.pathname.endsWith('zimauth.sqlite'));
+    if (targets.length === 0) return null;
+
+    // Pick latest uploaded database
+    targets.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+    const target = targets[0];
+    const fetchUrl = target.downloadUrl || target.url;
+
+    if (fetchUrl) {
+      const resp = await fetch(fetchUrl, { cache: 'no-store' });
       if (resp.ok) {
         const ab = await resp.arrayBuffer();
+        console.log('[Blob] Downloaded newest zimauth.sqlite (' + ab.byteLength + ' bytes) uploaded at ' + target.uploadedAt);
         return Buffer.from(ab);
       }
     }
-  } catch (err2) {
-    console.warn('[Blob] Download fallback error:', err2.message);
+  } catch (err) {
+    console.warn('[Blob] Download error:', err.message);
   }
   return null;
 }
@@ -77,12 +72,12 @@ async function uploadBlobDb(buffer) {
   isUploadingBlob = true;
   try {
     const { put } = require('@vercel/blob');
-    await put('zimauth.sqlite', buffer, {
-      access: 'private',
+    const blob = await put('zimauth.sqlite', buffer, {
+      access: 'public',
       addRandomSuffix: false,
       token
     });
-    console.log('[Blob] Successfully saved zimauth.sqlite to Vercel Blob (' + buffer.length + ' bytes)');
+    console.log('[Blob] Successfully saved zimauth.sqlite to Vercel Blob (' + buffer.length + ' bytes, url: ' + (blob.url || '') + ')');
   } catch (err) {
     console.error('[Blob] Failed to save zimauth.sqlite to Vercel Blob:', err.message);
   } finally {
@@ -398,6 +393,19 @@ class DatabaseWrapper {
       console.error('[DB run error]', sql, params, err);
       throw err;
     }
+  }
+
+  exportBuffer() {
+    if (!this.db) return Buffer.alloc(0);
+    return Buffer.from(this.db.export());
+  }
+
+  async importBuffer(buffer) {
+    if (!buffer || buffer.length === 0) throw new Error('Empty database buffer');
+    const SQL = await initSqlJs();
+    this.db = new SQL.Database(buffer);
+    await this.persist();
+    return true;
   }
 }
 

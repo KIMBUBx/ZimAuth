@@ -123,6 +123,22 @@
 
     <!-- Content Workspace -->
     <main class="flex-1 overflow-y-auto p-6 md:p-8">
+
+      <!-- Cloud Storage Status Alert Banner (Shown on Vercel without Blob) -->
+      <div id="storage-alert-banner" class="hidden mb-6 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm shadow-lg shadow-amber-500/5">
+        <div class="flex items-center space-x-3">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400 shrink-0"></i>
+          <div>
+            <span class="font-bold text-amber-300">คำเตือนสำหรับ Vercel:</span>
+            <span class="text-xs sm:text-sm"> คุณกำลังรันบน Vercel โดยยังไม่ได้เชื่อมต่อ <b>Vercel Blob</b> ข้อมูลและคีย์จะถูกลบเมื่อปิดเว็บ!</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 shrink-0">
+          <button onclick="switchTab('settings')" class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition">
+            ดูวิธีเปิด Vercel Blob ฟรี
+          </button>
+        </div>
+      </div>
       
       <!-- TAB 1: OVERVIEW -->
       <div id="tab-overview" class="space-y-6">
@@ -576,6 +592,37 @@
               <button type="button" onclick="deleteCurrentApp()" class="px-6 py-2.5 rounded-xl font-semibold text-sm bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20">Delete App</button>
             </div>
           </form>
+        </div>
+
+        <!-- Database Persistence & Vercel Blob Setup -->
+        <div class="glass-card p-6 max-w-2xl space-y-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                <i data-lucide="cloud" class="w-5 h-5 text-indigo-400"></i>
+                <span>สถานะฐานข้อมูล & คลาวด์สตอเรจ (Database Persistence)</span>
+              </h3>
+              <p id="storage-status-text" class="text-slate-400 text-xs mt-1">กำลังตรวจสอบสถานะ...</p>
+            </div>
+            <a href="/api/dashboard/backup/download" class="gradient-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 shrink-0">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>สำรองไฟล์ (.sqlite)</span>
+            </a>
+          </div>
+
+          <div id="vercel-blob-instructions" class="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 space-y-2 text-xs text-slate-300">
+            <div class="font-bold text-white flex items-center space-x-1.5 text-sm">
+              <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+              <span>วิธีแก้ปัญหา "ปิดเว็บแล้วคีย์หาย" บน Vercel ถาวร (ฟรี 100%):</span>
+            </div>
+            <ol class="list-decimal list-inside space-y-1.5 pl-1 text-slate-300">
+              <li>เปิด <a href="https://vercel.com/dashboard" target="_blank" class="text-indigo-400 underline font-semibold">Vercel Dashboard</a> แล้วคลิกที่โปรเจกต์ <b>ZimAuth</b> ของคุณ</li>
+              <li>ไปที่แถบเมนูด้านบน คลิกที่แท็บ <b>Storage</b></li>
+              <li>คลิกปุ่ม <b>Create Database</b> หรือ <b>Connect Store</b> แล้วเลือก <b>Blob</b> (Vercel Blob Storage)</li>
+              <li>เลือกชื่อ Store แล้วคลิก <b>Continue / Connect to Project</b></li>
+              <li>เสร็จแล้ว! Vercel จะตั้งค่าตัวแปร <code class="text-indigo-300 font-bold">BLOB_READ_WRITE_TOKEN</code> ให้อัตโนมัติ คีย์ทั้งหมดจะถูกซิงค์ขึ้น Cloud ตลอดไป ไม่หายแน่นอนครับ</li>
+            </ol>
+          </div>
         </div>
       </div>
 

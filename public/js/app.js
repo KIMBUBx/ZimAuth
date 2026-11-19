@@ -1744,10 +1744,40 @@ MsgBox($MB_OK, "ZimAuth Init", $sResponse)`;
   }
 }
 
+// Check Cloud Storage / Vercel Blob Status
+async function checkStorageStatus() {
+  try {
+    const res = await fetch('/api/dashboard/storage-status', { headers: getAuthHeaders() });
+    const data = await res.json();
+    const banner = document.getElementById('storage-alert-banner');
+    const statusText = document.getElementById('storage-status-text');
+
+    if (data.isVercel && !data.hasBlob) {
+      if (banner) banner.classList.remove('hidden');
+      if (statusText) {
+        statusText.innerHTML = '<span class="text-amber-400 font-bold">⚠️ Vercel Serverless (ยังไม่ได้ผูก Blob Store — คีย์จะถูกรีเซ็ตเมื่อปิดเว็บ)</span>';
+      }
+    } else if (data.hasBlob) {
+      if (banner) banner.classList.add('hidden');
+      if (statusText) {
+        statusText.innerHTML = '<span class="text-emerald-400 font-bold">✅ Vercel Blob Storage Connected (บันทึกข้อมูลและคีย์บนคลาวด์ถาวร 100%)</span>';
+      }
+    } else {
+      if (banner) banner.classList.add('hidden');
+      if (statusText) {
+        statusText.innerHTML = '<span class="text-indigo-400 font-bold">✅ Local SQLite (บันทึกไฟล์บนเครื่องคอมพิวเตอร์ถาวร)</span>';
+      }
+    }
+  } catch (e) {
+    console.warn('Could not check storage status:', e);
+  }
+}
+
 // App Initialization on Page Load
 window.addEventListener('DOMContentLoaded', async () => {
   const user = await checkAuth();
   if (user) {
     await loadApps();
+    await checkStorageStatus();
   }
 });

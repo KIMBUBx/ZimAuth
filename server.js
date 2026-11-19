@@ -112,16 +112,27 @@ app.use((err, req, res, next) => {
   });
 });
 
-async function startServer() {
+async function startServer(portToUse = PORT) {
   await ensureDbReady();
 
-  app.listen(PORT, () => {
+  const server = app.listen(portToUse, () => {
+    const actPort = server.address().port;
     console.log(`====================================================`);
     console.log(`  ZimAuth Licensing & Auth Server is Running!`);
-    console.log(`  Website & Dashboard : http://localhost:${PORT}`);
-    console.log(`  KeyAuth Client API  : http://localhost:${PORT}/api/1.2/`);
+    console.log(`  Website & Dashboard : http://localhost:${actPort}`);
+    console.log(`  KeyAuth Client API  : http://localhost:${actPort}/api/1.2/`);
     console.log(`  All Plans Unlocked  : 100% Free Lifetime Access`);
     console.log(`====================================================`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const nextPort = Number(portToUse) + 1;
+      console.warn(`[ZimAuth] Port ${portToUse} is in use. Trying port ${nextPort}...`);
+      startServer(nextPort);
+    } else {
+      console.error('[ZimAuth] Failed to start server:', err);
+    }
   });
 }
 

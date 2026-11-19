@@ -96,11 +96,12 @@ router.post('/auth/login', (req, res) => {
   }
 
   const token = generateToken({ id: account.id, username: account.username, email: account.email });
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
   res.cookie('token', token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' || !!process.env.VERCEL,
-    maxAge: 7 * 86400 * 1000
+    secure: isHttps,
+    maxAge: 30 * 86400 * 1000
   });
   return res.json({ success: true, message: 'Logged in successfully!', token });
 });
@@ -526,6 +527,37 @@ router.delete('/apps/:id/webhooks/:whId', authMiddleware, (req, res) => {
 
   db.run('DELETE FROM app_webhooks WHERE id = ?', [wh.id]);
   return res.json({ success: true, message: 'Webhook deleted.' });
+});
+
+// ================= STORAGE & BACKUP =================
+
+// Check cloud storage status (Vercel Blob / LibSQL)
+router.get('/storage-status', authMiddleware, (req, res) => {
+  const isVercel = !!process.env.VERCEL;
+  const hasBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
+  return res.json({
+    success: true,
+    isVercel,
+    hasBlob,
+    statusText: isVercel
+      ? (hasBlob ? 'Vercel Blob Connected (Persistent)' : 'Vercel Ephemeral (No Blob Store Connected)')
+      : 'Local SQLite (Persistent on Machine)'
+  });
+});
+
+// Download SQLite Database Backup
+router.get('/backup/download', authMiddleware, (req, res) => {
+  try {
+    const buffer = db.exportBuffer();
+    const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    res.setHeader('Content-Type', 'application/x-sqlite3');
+    res.setHeader('Content-Disposition', `attachment; filename="zimauth-backup-${dateStr}.sqlite"`);
+    res.setHeader('Content-Length', buffer.length);
+    return res.end(buffer);
+  } catch (err) {
+    console.error('Backup download error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to export database.' });
+  }
 });
 
 module.exports = router;

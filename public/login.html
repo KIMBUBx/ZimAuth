@@ -135,6 +135,23 @@
   <script>
     lucide.createIcons();
 
+    // Auto-login check if already authenticated
+    (async function checkExistingAuth() {
+      const token = localStorage.getItem('zim_token');
+      if (token) {
+        try {
+          const res = await fetch('/api/dashboard/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          if (data && data.success && data.user) {
+            window.location.replace('/dashboard.html');
+            return;
+          }
+        } catch (e) {}
+      }
+    })();
+
     function switchTab(tab) {
       const loginBtn = document.getElementById('tab-login-btn');
       const regBtn = document.getElementById('tab-register-btn');
