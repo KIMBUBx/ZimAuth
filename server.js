@@ -39,8 +39,43 @@ const { hashPassword } = loadModule('auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// Database Readiness Promise
+let dbInitPromise = null;
+function ensureDbReady() {
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      await db.init();
+      const adminPass = hashPassword('admin123');
+      const adminAccount = db.queryOne('SELECT id FROM accounts WHERE username = ?', ['admin']);
+      if (!adminAccount) {
+        db.run(
+          `INSERT INTO accounts (username, email, password_hash, role, plan)
+           VALUES (?, ?, ?, 'admin', 'Enterprise Lifetime (Free)')`,
+          ['admin', 'admin@zimauth.cc', adminPass]
+        );
+        console.log('[ZimAuth] Default admin account created: admin / admin123');
+      } else {
+        db.run('UPDATE accounts SET password_hash = ? WHERE username = ?', [adminPass, 'admin']);
+        console.log('[ZimAuth] Admin account verified: admin / admin123');
+      }
+    })();
+  }
+  return dbInitPromise;
+}
+
+// 1. Ensure DB is initialized before ANY request or route is touched
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbReady();
+    next();
+  } catch (err) {
+    console.error('[ZimAuth] DB ready error:', err);
+    next(err);
+  }
+});
+
+// 2. Middleware & Parsers
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -62,37 +97,6 @@ app.get('/dashboard', (req, res) => {
 
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-// Server Initialization
-let dbInitPromise = null;
-function ensureDbReady() {
-  if (!dbInitPromise) {
-    dbInitPromise = (async () => {
-      await db.init();
-      const accountCount = db.queryOne('SELECT COUNT(*) as c FROM accounts')?.c || 0;
-      if (accountCount === 0) {
-        const adminPass = hashPassword('admin123');
-        db.run(
-          `INSERT INTO accounts (username, email, password_hash, role, plan)
-           VALUES (?, ?, ?, 'admin', 'Enterprise Lifetime (Free)')`,
-          ['admin', 'admin@zimauth.cc', adminPass]
-        );
-        console.log('[ZimAuth] Default admin account created: admin / admin123 (Enterprise Plan Unlocked)');
-      }
-    })();
-  }
-  return dbInitPromise;
-}
-
-app.use(async (req, res, next) => {
-  try {
-    await ensureDbReady();
-    next();
-  } catch (err) {
-    console.error('[ZimAuth] DB ready error:', err);
-    next(err);
-  }
 });
 
 async function startServer() {

@@ -1,5 +1,28 @@
 // D:\KIM\KIMAUTH\public\js\app.js
 
+// Intercept fetch to automatically attach JWT token and include credentials
+const originalFetch = window.fetch;
+window.fetch = function (url, options = {}) {
+  options = options || {};
+  options.credentials = options.credentials || 'include';
+  if (typeof url === 'string' && url.includes('/api/')) {
+    const token = localStorage.getItem('zim_token');
+    if (token) {
+      options.headers = options.headers || {};
+      if (options.headers instanceof Headers) {
+        if (!options.headers.has('Authorization')) {
+          options.headers.set('Authorization', 'Bearer ' + token);
+        }
+      } else if (Array.isArray(options.headers)) {
+        options.headers.push(['Authorization', 'Bearer ' + token]);
+      } else {
+        options.headers['Authorization'] = options.headers['Authorization'] || ('Bearer ' + token);
+      }
+    }
+  }
+  return originalFetch.call(this, url, options);
+};
+
 let currentApp = null;
 let appsList = [];
 
@@ -53,9 +76,22 @@ function copySnippet(elementId) {
   });
 }
 
+// Helper for authenticated requests
+function getAuthHeaders(extraHeaders = {}) {
+  const token = localStorage.getItem('zim_token');
+  const headers = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 // Logout
 async function logout() {
-  await fetch('/api/dashboard/auth/logout', { method: 'POST' });
+  localStorage.removeItem('zim_token');
+  try {
+    await fetch('/api/dashboard/auth/logout', { method: 'POST', headers: getAuthHeaders() });
+  } catch (e) {}
   window.location.href = '/login.html';
 }
 
@@ -96,7 +132,9 @@ function switchTab(tabId) {
 // Check session
 async function checkAuth() {
   try {
-    const res = await fetch('/api/dashboard/auth/me');
+    const res = await fetch('/api/dashboard/auth/me', {
+      headers: getAuthHeaders()
+    });
     const data = await res.json();
     if (!data.success) {
       window.location.href = '/login.html';
