@@ -30,6 +30,22 @@ async function downloadBlobDb() {
   if (!token) return null;
 
   try {
+    const { get } = require('@vercel/blob');
+    const result = await get('zimauth.sqlite', { access: 'private', token });
+    if (result && result.stream) {
+      const chunks = [];
+      for await (const chunk of result.stream) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+      console.log('[Blob] Downloaded zimauth.sqlite from Vercel Blob via get() (' + buffer.length + ' bytes)');
+      return buffer;
+    }
+  } catch (err) {
+    console.warn('[Blob] Direct get failed, trying list fallback:', err.message);
+  }
+
+  try {
     const { list } = require('@vercel/blob');
     const { blobs } = await list({ token });
     if (!blobs || blobs.length === 0) return null;
@@ -43,15 +59,18 @@ async function downloadBlobDb() {
     const fetchUrl = target.downloadUrl || target.url;
 
     if (fetchUrl) {
-      const resp = await fetch(fetchUrl, { cache: 'no-store' });
+      const resp = await fetch(fetchUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
+      });
       if (resp.ok) {
         const ab = await resp.arrayBuffer();
-        console.log('[Blob] Downloaded newest zimauth.sqlite (' + ab.byteLength + ' bytes) uploaded at ' + target.uploadedAt);
+        console.log('[Blob] Downloaded newest zimauth.sqlite via list (' + ab.byteLength + ' bytes) uploaded at ' + target.uploadedAt);
         return Buffer.from(ab);
       }
     }
-  } catch (err) {
-    console.warn('[Blob] Download error:', err.message);
+  } catch (err2) {
+    console.warn('[Blob] Download list fallback error:', err2.message);
   }
   return null;
 }
@@ -72,12 +91,23 @@ async function uploadBlobDb(buffer) {
   isUploadingBlob = true;
   try {
     const { put } = require('@vercel/blob');
-    const blob = await put('zimauth.sqlite', buffer, {
-      access: 'public',
-      addRandomSuffix: false,
-      token
-    });
-    console.log('[Blob] Successfully saved zimauth.sqlite to Vercel Blob (' + buffer.length + ' bytes, url: ' + (blob.url || '') + ')');
+    let blob;
+    try {
+      blob = await put('zimauth.sqlite', buffer, {
+        access: 'private',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        token
+      });
+    } catch (privErr) {
+      blob = await put('zimauth.sqlite', buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        token
+      });
+    }
+    console.log('[Blob] Successfully saved zimauth.sqlite to Vercel Blob (' + buffer.length + ' bytes, url: ' + (blob ? blob.url : '') + ')');
   } catch (err) {
     console.error('[Blob] Failed to save zimauth.sqlite to Vercel Blob:', err.message);
   } finally {
