@@ -24,6 +24,77 @@ const DB_FILE = process.env.VERCEL
   ? path.join(os.tmpdir(), 'zimauth.sqlite')
   : DEFAULT_DB_FILE;
 
+// Helper: Download latest SQLite from Vercel Blob
+async function downloadBlobDb() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+  try {
+    const { get } = require('@vercel/blob');
+    const result = await get('zimauth.sqlite', { access: 'private', token });
+    if (result && result.stream) {
+      const chunks = [];
+      for await (const chunk of result.stream) {
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks);
+    }
+  } catch (err) {
+    console.warn('[Blob] Direct get failed, trying list fallback:', err.message);
+  }
+
+  try {
+    const { list } = require('@vercel/blob');
+    const { blobs } = await list({ token });
+    const target = blobs.find((b) => b.pathname === 'zimauth.sqlite');
+    if (target && target.downloadUrl) {
+      const resp = await fetch(target.downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (resp.ok) {
+        const ab = await resp.arrayBuffer();
+        return Buffer.from(ab);
+      }
+    }
+  } catch (err2) {
+    console.warn('[Blob] Download fallback error:', err2.message);
+  }
+  return null;
+}
+
+// Helper: Upload SQLite buffer to Vercel Blob
+let isUploadingBlob = false;
+let pendingBlobBuffer = null;
+
+async function uploadBlobDb(buffer) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token || !buffer) return;
+
+  if (isUploadingBlob) {
+    pendingBlobBuffer = buffer;
+    return;
+  }
+
+  isUploadingBlob = true;
+  try {
+    const { put } = require('@vercel/blob');
+    await put('zimauth.sqlite', buffer, {
+      access: 'private',
+      addRandomSuffix: false,
+      token
+    });
+    console.log('[Blob] Successfully saved zimauth.sqlite to Vercel Blob (' + buffer.length + ' bytes)');
+  } catch (err) {
+    console.error('[Blob] Failed to save zimauth.sqlite to Vercel Blob:', err.message);
+  } finally {
+    isUploadingBlob = false;
+    if (pendingBlobBuffer) {
+      const nextBuf = pendingBlobBuffer;
+      pendingBlobBuffer = null;
+      uploadBlobDb(nextBuf);
+    }
+  }
+}
+
 class DatabaseWrapper {
   constructor() {
     this.db = null;
@@ -46,16 +117,37 @@ class DatabaseWrapper {
 
     const SQL = await initSqlJs(wasmBinary ? { wasmBinary } : {});
 
-    // 2. Prepare SQLite storage file
-    if (process.env.VERCEL && !fs.existsSync(DB_FILE) && fs.existsSync(DEFAULT_DB_FILE)) {
+    // 2. Load latest database: Try Vercel Blob first
+    let cloudBuffer = null;
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        cloudBuffer = await downloadBlobDb();
+        if (cloudBuffer) {
+          console.log('[DB] Loaded latest database from Vercel Blob (' + cloudBuffer.length + ' bytes)');
+        }
+      } catch (e) {
+        console.warn('[DB] Could not load from Vercel Blob:', e.message);
+      }
+    }
+
+    if (cloudBuffer) {
+      this.db = new SQL.Database(cloudBuffer);
+      try {
+        fs.writeFileSync(DB_FILE, cloudBuffer);
+      } catch (e) {}
+    } else if (process.env.VERCEL && !fs.existsSync(DB_FILE) && fs.existsSync(DEFAULT_DB_FILE)) {
       try {
         fs.copyFileSync(DEFAULT_DB_FILE, DB_FILE);
       } catch (e) {
         console.warn('[DB] Could not copy initial DB to /tmp:', e.message);
       }
-    }
-
-    if (fs.existsSync(DB_FILE)) {
+      if (fs.existsSync(DB_FILE)) {
+        const fileBuffer = fs.readFileSync(DB_FILE);
+        this.db = new SQL.Database(fileBuffer);
+      } else {
+        this.db = new SQL.Database();
+      }
+    } else if (fs.existsSync(DB_FILE)) {
       const fileBuffer = fs.readFileSync(DB_FILE);
       this.db = new SQL.Database(fileBuffer);
     } else if (fs.existsSync(DEFAULT_DB_FILE)) {
@@ -83,7 +175,16 @@ class DatabaseWrapper {
     try {
       const data = this.db.export();
       const buffer = Buffer.from(data);
-      fs.writeFileSync(DB_FILE, buffer);
+      try {
+        fs.writeFileSync(DB_FILE, buffer);
+      } catch (e) {}
+      
+      // Upload to Vercel Blob if token available
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        uploadBlobDb(buffer).catch((err) => {
+          console.error('[Blob] Background upload error:', err);
+        });
+      }
     } catch (err) {
       console.error('[DB] Save error:', err);
     }
